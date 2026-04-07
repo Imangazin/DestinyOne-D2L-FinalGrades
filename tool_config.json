@@ -1,0 +1,16 @@
+{
+  "https://YOUR_BRIGHTSPACE_DOMAIN": [
+    {
+      "default": true,
+      "client_id": "PASTE_CLIENT_ID_HERE",
+      "auth_login_url": "https://YOUR_BRIGHTSPACE_DOMAIN/d2l/lti/auth/api/login",
+      "auth_token_url": "PASTE_BRIGHTSPACE_OAUTH2_TOKEN_URL_HERE",
+      "auth_audience": null,
+      "key_set_url": "PASTE_BRIGHTSPACE_KEYSET_URL_HERE",
+      "key_set": null,
+      "private_key_file": "keys/private.key",
+      "public_key_file": "keys/public.key",
+      "deployment_ids": ["PASTE_DEPLOYMENT_ID_HERE"]
+    }
+  ]
+}

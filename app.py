@@ -1,0 +1,92 @@
+import os
+from dotenv import load_dotenv
+from tempfile import mkdtemp
+
+from flask import Flask, jsonify, render_template, request
+from flask_caching import Cache
+from pylti1p3.contrib.flask import FlaskOIDCLogin, FlaskMessageLaunch
+from pylti1p3.contrib.flask.request import FlaskRequest
+from pylti1p3.contrib.flask import FlaskCacheDataStorage
+from pylti1p3.tool_config import ToolConfJsonFile
+
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
+CACHE_DIR = os.getenv("FLASK_CACHE_DIR", "/tmp/destiny1-flask-cache")
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_prefix=1)
+app.config["APPLICATION_ROOT"] = "/destiny"
+app.secret_key = SECRET_KEY
+
+app.config.from_mapping(
+    DEBUG=True,
+    CACHE_TYPE="FileSystemCache",
+    CACHE_DEFAULT_TIMEOUT=600,
+    CACHE_DIR=CACHE_DIR,
+    SECRET_KEY=SECRET_KEY,
+    SESSION_TYPE="filesystem",
+    SESSION_FILE_DIR=mkdtemp(),
+    SESSION_COOKIE_NAME="destiny1-lti13-sessionid",
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE="None",
+)
+
+cache = Cache(app)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+tool_conf = ToolConfJsonFile(os.path.join(BASE_DIR, "tool_config.json"))
+
+
+def get_launch_data_storage():
+    return FlaskCacheDataStorage(cache)
+
+
+@app.route("/")
+def index():
+    return "Flask app is running."
+
+
+@app.route("/login/", methods=["GET", "POST"])
+def login():
+    flask_request = FlaskRequest()
+    target_link_uri = flask_request.get_param("target_link_uri")
+    if not target_link_uri:
+        raise Exception('Missing "target_link_uri" param')
+
+    oidc_login = FlaskOIDCLogin(
+        flask_request,
+        tool_conf,
+        launch_data_storage=get_launch_data_storage(),
+    )
+    return oidc_login.enable_check_cookies().redirect(target_link_uri)
+
+
+@app.route("/launch/", methods=["POST"])
+def launch():
+    flask_request = FlaskRequest()
+
+    message_launch = FlaskMessageLaunch(
+        flask_request,
+        tool_conf,
+        launch_data_storage=get_launch_data_storage(),
+    )
+    message_launch.get_launch_data()
+    launch_data = message_launch.get_launch_data()
+    user = launch_data.get("name")
+    course = launch_data.get("context", {}).get("title")
+    return f"Hello {user}, welcome to {course}"
+
+
+@app.route("/jwks/", methods=["GET"])
+def jwks():
+    return tool_conf.get_jwks()
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5060, debug=True)
