@@ -14,13 +14,14 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 load_dotenv()
 
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
-CACHE_DIR = os.getenv("FLASK_CACHE_DIR", "/tmp/destiny1-flask-cache")
+APP_FOLDER = os.getenv("APP_FOLDER")
+CACHE_DIR = os.getenv("FLASK_CACHE_DIR", f"/tmp/{APP_FOLDER}-flask-cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_prefix=1)
-app.config["APPLICATION_ROOT"] = "/destiny"
+app.config["APPLICATION_ROOT"] = f"/{APP_FOLDER}"
 app.secret_key = SECRET_KEY
 
 app.config.from_mapping(
@@ -31,7 +32,7 @@ app.config.from_mapping(
     SECRET_KEY=SECRET_KEY,
     SESSION_TYPE="filesystem",
     SESSION_FILE_DIR=mkdtemp(),
-    SESSION_COOKIE_NAME="destiny1-lti13-sessionid",
+    SESSION_COOKIE_NAME=f"{APP_FOLDER}-lti13-sessionid",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_SAMESITE="None",
