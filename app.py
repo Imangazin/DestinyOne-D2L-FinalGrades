@@ -49,11 +49,12 @@ def get_launch_data_storage():
 
 def get_cached_message_launch():
     flask_request = FlaskRequest()
-    return FlaskMessageLaunch.from_cache(
+    message_launch = FlaskMessageLaunch(
         flask_request,
-        tool_config=tool_conf,
+        tool_conf,
         launch_data_storage=get_launch_data_storage(),
     )
+    return message_launch.from_cache()
 
 
 @app.route("/")
