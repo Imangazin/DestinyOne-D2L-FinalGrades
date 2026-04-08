@@ -51,7 +51,7 @@ def get_cached_message_launch():
     flask_request = FlaskRequest()
     return FlaskMessageLaunch.from_cache(
         flask_request,
-        tool_conf,
+        tool_config=tool_conf,
         launch_data_storage=get_launch_data_storage(),
     )
 
