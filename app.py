@@ -21,7 +21,6 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1, x_prefix=1)
-app.config["APPLICATION_ROOT"] = f"/{APP_FOLDER}"
 app.secret_key = SECRET_KEY
 
 app.config.from_mapping(
@@ -78,18 +77,29 @@ def login():
 
 @app.route("/launch/", methods=["POST"])
 def launch():
+    print("LAUNCH METHOD:", request.method)
+    print("LAUNCH ARGS:", dict(request.args))
+    print("LAUNCH FORM KEYS:", list(request.form.keys()))
+
     flask_request = FlaskRequest()
 
-    message_launch = FlaskMessageLaunch(
-        flask_request,
-        tool_conf,
-        launch_data_storage=get_launch_data_storage(),
-    )
-    message_launch.get_launch_data()
-    launch_data = message_launch.get_launch_data()
-    user = launch_data.get("name")
-    course = launch_data.get("context", {}).get("title")
-    return f"Hello {user}, welcome to {course}"
+    try:
+        message_launch = FlaskMessageLaunch(
+            flask_request,
+            tool_conf,
+            launch_data_storage=get_launch_data_storage(),
+        )
+        launch_data = message_launch.get_launch_data()
+
+        print("LAUNCH DATA:", launch_data)
+
+        user = launch_data.get("name")
+        course = launch_data.get("context", {}).get("title")
+        return f"Hello {user}, welcome to {course}"
+
+    except Exception as e:
+        print("LAUNCH ERROR:", str(e))
+        return {"error": str(e)}, 400
 
 
 @app.route("/jwks/", methods=["GET"])
