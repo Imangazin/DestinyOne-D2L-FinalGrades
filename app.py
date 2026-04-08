@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from tempfile import mkdtemp
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session
 from flask_caching import Cache
 from pylti1p3.contrib.flask import FlaskOIDCLogin, FlaskMessageLaunch
 from pylti1p3.contrib.flask.request import FlaskRequest
@@ -48,13 +48,17 @@ def get_launch_data_storage():
 
 
 def get_cached_message_launch():
+    launch_id = session.get("launch_id")
+    if not launch_id:
+        raise Exception("Missing launch_id in session. Launch the tool from Brightspace first.")
+
     flask_request = FlaskRequest()
-    message_launch = FlaskMessageLaunch(
+    return FlaskMessageLaunch.from_cache(
+        launch_id,
         flask_request,
         tool_conf,
         launch_data_storage=get_launch_data_storage(),
     )
-    return message_launch.from_cache()
 
 
 @app.route("/")
@@ -100,7 +104,9 @@ def launch():
             launch_data_storage=get_launch_data_storage(),
         )
         launch_data = message_launch.get_launch_data()
+        session["launch_id"] = message_launch.get_launch_id()
 
+        print("LAUNCH ID:", session["launch_id"])
         print("LAUNCH DATA:", launch_data)
 
         brightspace_data = launch_data.get("http://www.brightspace.com", {})
