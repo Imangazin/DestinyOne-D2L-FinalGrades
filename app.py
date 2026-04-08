@@ -129,11 +129,28 @@ def members():
     try:
         message_launch = get_cached_message_launch()
         nrps = message_launch.get_nrps()
-        members = nrps.get_members()
+        members_response = nrps.get_members()
+
+        print("MEMBERS RESPONSE TYPE:", type(members_response).__name__)
+        print("MEMBERS RESPONSE:", members_response)
+
+        members_list = members_response
+        if isinstance(members_response, dict):
+            members_list = members_response.get("members", [])
+
+        first_member = (
+            members_list[0]
+            if isinstance(members_list, list) and members_list
+            else None
+        )
+
         return jsonify({
-            "members": members,
-            "count": len(members) if isinstance(members, list) else None
+            "members": members_list,
+            "count": len(members_list) if isinstance(members_list, list) else None,
+            "first_member": first_member,
+            "raw_response": members_response if isinstance(members_response, dict) else None
         })
+
     except Exception as e:
         print("MEMBERS ERROR:", str(e))
         return jsonify({"error": str(e)}), 400
