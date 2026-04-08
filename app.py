@@ -56,9 +56,17 @@ def index():
 @app.route("/login/", methods=["GET", "POST"])
 def login():
     flask_request = FlaskRequest()
+    print("LOGIN METHOD:", request.method)
+    print("LOGIN ARGS:", dict(request.args))
+    print("LOGIN FORM:", dict(request.form))
+
     target_link_uri = flask_request.get_param("target_link_uri")
     if not target_link_uri:
-        raise Exception('Missing "target_link_uri" param')
+        return {
+            "error": 'Missing "target_link_uri" param',
+            "args": dict(request.args),
+            "form": dict(request.form),
+        }, 400
 
     oidc_login = FlaskOIDCLogin(
         flask_request,
