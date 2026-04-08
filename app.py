@@ -47,6 +47,15 @@ def get_launch_data_storage():
     return FlaskCacheDataStorage(cache)
 
 
+def get_cached_message_launch():
+    flask_request = FlaskRequest()
+    return FlaskMessageLaunch.from_cache(
+        flask_request,
+        tool_conf,
+        launch_data_storage=get_launch_data_storage(),
+    )
+
+
 @app.route("/")
 def index():
     return "Flask app is running."
@@ -93,13 +102,83 @@ def launch():
 
         print("LAUNCH DATA:", launch_data)
 
-        user = launch_data.get("name")
-        course = launch_data.get("context", {}).get("title")
-        return f"Hello {user}, welcome to {course}"
+        brightspace_data = launch_data.get("http://www.brightspace.com", {})
+        context_data = launch_data.get(
+            "https://purl.imsglobal.org/spec/lti/claim/context", {}
+        )
+
+        user = brightspace_data.get("username") or launch_data.get("sub")
+        course = context_data.get("title")
+        return jsonify({
+            "message": f"Hello {user}, welcome to {course}",
+            "user": user,
+            "course": course,
+            "launch_data": launch_data,
+            "members_url": "/members/",
+            "lineitems_url": "/lineitems/",
+            "results_url": "/results/"
+        })
 
     except Exception as e:
         print("LAUNCH ERROR:", str(e))
         return {"error": str(e)}, 400
+
+
+@app.route("/members/", methods=["GET"])
+def members():
+    try:
+        message_launch = get_cached_message_launch()
+        nrps = message_launch.get_nrps()
+        members = nrps.get_members()
+        return jsonify({
+            "members": members,
+            "count": len(members) if isinstance(members, list) else None
+        })
+    except Exception as e:
+        print("MEMBERS ERROR:", str(e))
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/lineitems/", methods=["GET"])
+def lineitems():
+    try:
+        message_launch = get_cached_message_launch()
+        ags = message_launch.get_ags()
+        lineitems = ags.get_lineitems()
+        return jsonify({
+            "lineitems": lineitems,
+            "count": len(lineitems) if isinstance(lineitems, list) else None
+        })
+    except Exception as e:
+        print("LINEITEMS ERROR:", str(e))
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/results/", methods=["GET"])
+def results():
+    try:
+        message_launch = get_cached_message_launch()
+        ags = message_launch.get_ags()
+
+        lineitem_id = request.args.get("lineitem_id")
+        if not lineitem_id:
+            lineitems = ags.get_lineitems()
+            if not lineitems:
+                return jsonify({
+                    "message": "No line items found",
+                    "results": []
+                })
+            lineitem_id = lineitems[0].get("id")
+
+        results = ags.get_lineitem_results(lineitem_id)
+        return jsonify({
+            "lineitem_id": lineitem_id,
+            "results": results,
+            "count": len(results) if isinstance(results, list) else None
+        })
+    except Exception as e:
+        print("RESULTS ERROR:", str(e))
+        return jsonify({"error": str(e)}), 400
 
 
 @app.route("/jwks/", methods=["GET"])
