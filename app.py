@@ -55,9 +55,6 @@ def index():
 @app.route("/login/", methods=["GET", "POST"])
 def login():
     flask_request = FlaskRequest()
-    print("LOGIN METHOD:", request.method)
-    print("LOGIN ARGS:", dict(request.args))
-    print("LOGIN FORM:", dict(request.form))
 
     target_link_uri = flask_request.get_param("target_link_uri")
     if not target_link_uri:
@@ -77,9 +74,6 @@ def login():
 
 @app.route("/launch/", methods=["POST"])
 def launch():
-    print("LAUNCH METHOD:", request.method)
-    print("LAUNCH ARGS:", dict(request.args))
-    print("LAUNCH FORM KEYS:", list(request.form.keys()))
 
     flask_request = FlaskRequest()
 
@@ -91,7 +85,6 @@ def launch():
         )
         launch_data = message_launch.get_launch_data()
 
-        print("LAUNCH DATA:", launch_data)
 
         brightspace_data = launch_data.get("http://www.brightspace.com", {})
         context_data = launch_data.get(
@@ -108,7 +101,6 @@ def launch():
         })
 
     except Exception as e:
-        print("LAUNCH ERROR:", str(e))
         return {"error": str(e)}, 400
 
 
