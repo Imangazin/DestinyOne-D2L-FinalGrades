@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from tempfile import mkdtemp
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request
 from flask_caching import Cache
 from pylti1p3.contrib.flask import FlaskOIDCLogin, FlaskMessageLaunch
 from pylti1p3.contrib.flask.request import FlaskRequest
@@ -45,20 +45,6 @@ tool_conf = ToolConfJsonFile(os.path.join(BASE_DIR, "tool_config.json"))
 
 def get_launch_data_storage():
     return FlaskCacheDataStorage(cache)
-
-
-def get_cached_message_launch():
-    launch_id = session.get("launch_id")
-    if not launch_id:
-        raise Exception("Missing launch_id in session. Launch the tool from Brightspace first.")
-
-    flask_request = FlaskRequest()
-    return FlaskMessageLaunch.from_cache(
-        launch_id,
-        flask_request,
-        tool_conf,
-        launch_data_storage=get_launch_data_storage(),
-    )
 
 
 @app.route("/")
@@ -104,9 +90,7 @@ def launch():
             launch_data_storage=get_launch_data_storage(),
         )
         launch_data = message_launch.get_launch_data()
-        session["launch_id"] = message_launch.get_launch_id()
 
-        print("LAUNCH ID:", session["launch_id"])
         print("LAUNCH DATA:", launch_data)
 
         brightspace_data = launch_data.get("http://www.brightspace.com", {})
@@ -120,89 +104,12 @@ def launch():
             "message": f"Hello {user}, welcome to {course}",
             "user": user,
             "course": course,
-            "launch_data": launch_data,
-            "members_url": "/members/",
-            "lineitems_url": "/lineitems/",
-            "results_url": "/results/"
+            "launch_data": launch_data
         })
 
     except Exception as e:
         print("LAUNCH ERROR:", str(e))
         return {"error": str(e)}, 400
-
-
-@app.route("/members/", methods=["GET"])
-def members():
-    try:
-        message_launch = get_cached_message_launch()
-        nrps = message_launch.get_nrps()
-        members_response = nrps.get_members()
-
-        print("MEMBERS RESPONSE TYPE:", type(members_response).__name__)
-        print("MEMBERS RESPONSE:", members_response)
-
-        members_list = members_response
-        if isinstance(members_response, dict):
-            members_list = members_response.get("members", [])
-
-        first_member = (
-            members_list[0]
-            if isinstance(members_list, list) and members_list
-            else None
-        )
-
-        return jsonify({
-            "members": members_list,
-            "count": len(members_list) if isinstance(members_list, list) else None,
-            "first_member": first_member,
-            "raw_response": members_response if isinstance(members_response, dict) else None
-        })
-
-    except Exception as e:
-        print("MEMBERS ERROR:", str(e))
-        return jsonify({"error": str(e)}), 400
-
-
-@app.route("/lineitems/", methods=["GET"])
-def lineitems():
-    try:
-        message_launch = get_cached_message_launch()
-        ags = message_launch.get_ags()
-        lineitems = ags.get_lineitems()
-        return jsonify({
-            "lineitems": lineitems,
-            "count": len(lineitems) if isinstance(lineitems, list) else None
-        })
-    except Exception as e:
-        print("LINEITEMS ERROR:", str(e))
-        return jsonify({"error": str(e)}), 400
-
-
-@app.route("/results/", methods=["GET"])
-def results():
-    try:
-        message_launch = get_cached_message_launch()
-        ags = message_launch.get_ags()
-
-        lineitem_id = request.args.get("lineitem_id")
-        if not lineitem_id:
-            lineitems = ags.get_lineitems()
-            if not lineitems:
-                return jsonify({
-                    "message": "No line items found",
-                    "results": []
-                })
-            lineitem_id = lineitems[0].get("id")
-
-        results = ags.get_lineitem_results(lineitem_id)
-        return jsonify({
-            "lineitem_id": lineitem_id,
-            "results": results,
-            "count": len(results) if isinstance(results, list) else None
-        })
-    except Exception as e:
-        print("RESULTS ERROR:", str(e))
-        return jsonify({"error": str(e)}), 400
 
 
 @app.route("/jwks/", methods=["GET"])
