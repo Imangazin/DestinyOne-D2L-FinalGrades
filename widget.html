@@ -1,0 +1,77 @@
+<!--
+    Upload this file to Brightspace's Public Files area.
+    Insert it into the custom widget page on load by fetching this file and assigning
+    the response HTML to the target container's innerHTML.
+    Fill in the LTI launch URL in the toolUrl variable below.
+-->
+
+<style>
+    :root {
+        --accent: #e3e9f1;
+        --accent-dark: #d7e0eb;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    main {
+        width: min(100%, 760px);
+    }
+
+    p {
+        margin: 0 0 1.5rem;
+    }
+
+    .proceed-button {
+        display: block;
+        margin: 0 auto;
+        border: 0;
+        border-radius: 0.3rem;
+        min-width: 250px;
+        min-height: 42px;
+        padding: 0 30px;
+        color: #202122;
+        background: var(--accent);
+        font-family: Lato, "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        line-height: 0.9rem;
+        cursor: pointer;
+        transition: transform 160ms ease, background 160ms ease, opacity 160ms ease;
+    }
+
+    .proceed-button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        background: var(--accent-dark);
+    }
+
+</style>
+
+<main>
+    <p>
+        This is a widget that allows submit current course final grades to Destiny One.
+        Please ensure that final grades are calculated and ready to submit. Once you are
+        ready click the 'Proceed' button and follow the instructions.
+    </p>
+
+    <button
+        id="proceed-button"
+        class="proceed-button"
+        type="button"
+        onclick="
+            const toolUrl = '';
+            const destinyoneFinalGrades = document.getElementById('destinyone-final-grades');
+
+            if (!toolUrl) {
+                alert('The LTI tool link has not been configured yet.');
+                return;
+            }
+
+            destinyoneFinalGrades.innerHTML = '<iframe src=&quot;' + toolUrl + '&quot; title=&quot;Destiny One grade submission tool&quot; style=&quot;width: 100%; min-height: 520px; border: 0;&quot;></iframe>';
+        "
+    >
+        Proceed
+    </button>
+</main>

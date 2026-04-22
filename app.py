@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from tempfile import mkdtemp
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, request
 from flask_caching import Cache
 from pylti1p3.contrib.flask import FlaskOIDCLogin, FlaskMessageLaunch
 from pylti1p3.contrib.flask.request import FlaskRequest
@@ -93,10 +93,15 @@ def launch():
 
         user = brightspace_data.get("username") or launch_data.get("sub")
         course = context_data.get("title")
+
+        from auth2 import get_access_token
+        token_response = get_access_token()
+
         return jsonify({
             "message": f"Hello {user}, welcome to {course}",
             "user": user,
             "course": course,
+            "token": token_response,
             "launch_data": launch_data
         })
 
