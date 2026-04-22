@@ -15,7 +15,7 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 APP_FOLDER = os.getenv("APP_FOLDER")
-CACHE_DIR = os.getenv("FLASK_CACHE_DIR", f"/tmp/{APP_FOLDER}-flask-cache")
+CACHE_DIR = os.getenv("FLASK_CACHE_DIR") or f"/tmp/{APP_FOLDER}-flask-cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 

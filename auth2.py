@@ -16,7 +16,7 @@ SCOPES = os.getenv("SCOPES")
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PRIVATE_KEY_FILE = os.path.join(BASE_DIR, "private.key")
+PRIVATE_KEY_FILE = os.path.join(BASE_DIR, "keys", "private.key")
 
 with open(PRIVATE_KEY_FILE, "r") as f:
     PRIVATE_KEY_PEM = f.read()
