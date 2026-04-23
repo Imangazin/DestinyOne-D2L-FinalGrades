@@ -10,6 +10,8 @@ from pylti1p3.contrib.flask import FlaskCacheDataStorage
 from pylti1p3.tool_config import ToolConfJsonFile
 
 from werkzeug.middleware.proxy_fix import ProxyFix
+from auth2 import get_access_token
+from brightspace_grades import get_final_grade_values
 
 load_dotenv()
 
@@ -86,23 +88,23 @@ def launch():
         launch_data = message_launch.get_launch_data()
 
 
-        brightspace_data = launch_data.get("http://www.brightspace.com", {})
         context_data = launch_data.get(
             "https://purl.imsglobal.org/spec/lti/claim/context", {}
         )
+        org_unit_id = context_data.get("id")
 
-        user = brightspace_data.get("username") or launch_data.get("sub")
-        course = context_data.get("title")
+        if not org_unit_id:
+            return {"error": "Missing Brightspace org unit ID in LTI context claim."}, 400
 
-        from auth2 import get_access_token
         token_response = get_access_token()
+        grade_values = get_final_grade_values(
+            org_unit_id,
+            token_response["access_token"],
+        )
 
         return jsonify({
-            "message": f"Hello {user}, welcome to {course}",
-            "user": user,
-            "course": course,
-            "token": token_response,
-            "launch_data": launch_data
+            "org_unit_id": org_unit_id,
+            "grade_values": grade_values,
         })
 
     except Exception as e:

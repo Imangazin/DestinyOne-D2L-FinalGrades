@@ -1,0 +1,37 @@
+<!--
+    Upload this file to Brightspace's Public Files area.
+    Insert it into the custom widget page on load by fetching this file and assigning
+    the response HTML to the target container's innerHTML.
+    Create the Proceed button from the Brightspace page's JavaScript after this
+    fragment is inserted, because scripts inside innerHTML do not execute.
+-->
+
+<style>
+    :root {
+        --accent: #e3e9f1;
+        --accent-dark: #d7e0eb;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    main {
+        width: min(100%, 760px);
+    }
+
+    p {
+        margin: 0 0 1.5rem;
+    }
+
+</style>
+
+<main>
+    <p>
+        This is a widget that allows submit current course final grades to Destiny One.
+        Please ensure that final grades are calculated and ready to submit. Once you are
+        ready click the 'Proceed' button and follow the instructions.
+    </p>
+
+    <div id="proceed-button-container"></div>
+</main>
