@@ -1,3 +1,5 @@
+from typing import Union
+
 from brightspace_api import (
     BRIGHTSPACE_API_VERSION,
     DEFAULT_PAGE_SIZE,
@@ -6,7 +8,7 @@ from brightspace_api import (
 
 
 def get_final_grade_values(
-    org_unit_id: int | str,
+    org_unit_id: Union[int, str],
     access_token: str,
     *,
     page_size: int = DEFAULT_PAGE_SIZE,

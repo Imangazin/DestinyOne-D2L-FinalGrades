@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from urllib.parse import urljoin
 
 import requests
@@ -58,7 +59,7 @@ def request(method: str, path_or_url: str, access_token: str, **kwargs) -> dict:
 def get_all_object_pages(
     path: str,
     access_token: str,
-    params: dict | None = None,
+    params: Optional[dict] = None,
 ) -> list:
     objects = []
     next_url = path
