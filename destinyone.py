@@ -94,6 +94,10 @@ def _extract_session_id(login_response: Dict[str, Any]) -> str:
     if isinstance(response_detail, dict) and response_detail.get("sessionId"):
         return str(response_detail["sessionId"])
 
+    raw_response = login_response.get("raw")
+    if raw_response:
+        return str(raw_response)
+
     raise DestinyOneAuthError(
         "Destiny One login succeeded but no sessionId was found in the response: "
         "{response}".format(response=login_response)
