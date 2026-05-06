@@ -1,5 +1,5 @@
 import os
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -38,7 +38,7 @@ def _service_url(service_path: str, endpoint_path: str) -> str:
     return urljoin(service_base, endpoint_path.lstrip("/"))
 
 
-def _headers(session_id: Optional[str] = None) -> dict[str, str]:
+def _headers(session_id: Optional[str] = None) -> Dict[str, str]:
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -56,7 +56,7 @@ def _request(
     *,
     session_id: Optional[str] = None,
     **kwargs: Any,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     response = requests.request(
         method,
         url,
@@ -81,7 +81,7 @@ def _request(
     return body
 
 
-def _extract_session_id(login_response: dict[str, Any]) -> str:
+def _extract_session_id(login_response: Dict[str, Any]) -> str:
     session_id = login_response.get("sessionId")
     if session_id:
         return str(session_id)
@@ -126,7 +126,7 @@ def create_or_update_student_final_grade(
     course_section_profile_object_id: str,
     student_login_id: str,
     grade: str,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Create or update one student final grade in Destiny One."""
     payload = {
         "createOrUpdateStudentFinalGradeRequestDetail": {
