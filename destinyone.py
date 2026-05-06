@@ -95,7 +95,8 @@ def _extract_session_id(login_response: Dict[str, Any]) -> str:
         return str(response_detail["sessionId"])
 
     raise DestinyOneAuthError(
-        "Destiny One login succeeded but no sessionId was found in the response."
+        "Destiny One login succeeded but no sessionId was found in the response: "
+        "{response}".format(response=login_response)
     )
 
 
