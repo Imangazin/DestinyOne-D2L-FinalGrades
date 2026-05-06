@@ -1,7 +1,7 @@
 async function loadFinalGradesWidget(options) {
-    const widgetUrl = options.widgetUrl || options.widgetPath || "widget.html";
-    const targetId = options.targetId || "destinyone-final-grades";
-    const toolUrl = options.toolUrl || "";
+    const widgetUrl = options.widgetPath;
+    const targetId = options.targetId;
+    const toolUrl = options.toolUrl;
     const target = document.getElementById(targetId);
 
     try {

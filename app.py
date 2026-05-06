@@ -12,6 +12,7 @@ from pylti1p3.tool_config import ToolConfJsonFile
 from werkzeug.middleware.proxy_fix import ProxyFix
 from auth2 import get_access_token
 from brightspace_grades import get_final_grade_values
+from destinyone import login as destinyone_login
 
 load_dotenv()
 
@@ -101,10 +102,12 @@ def launch():
             org_unit_id,
             token_response["access_token"],
         )
+        destinyone_session_id = destinyone_login()
 
         return jsonify({
             "org_unit_id": org_unit_id,
             "grade_values": grade_values,
+            "destinyone_session_id": destinyone_session_id,
         })
 
     except Exception as e:
