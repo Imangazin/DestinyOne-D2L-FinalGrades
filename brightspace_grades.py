@@ -2,6 +2,7 @@ from typing import Union
 
 from brightspace_api import (
     BRIGHTSPACE_API_VERSION,
+    BRIGHTSPACE_LP_API_VERSION,
     DEFAULT_PAGE_SIZE,
     get_all_object_pages,
     request,
@@ -45,7 +46,7 @@ def get_course_template_code(
         "ouTypeId": ou_type_id,
     }
     path = (
-        f"/d2l/api/lp/{BRIGHTSPACE_API_VERSION}/"
+        f"/d2l/api/lp/{BRIGHTSPACE_LP_API_VERSION}/"
         f"orgstructure/{org_unit_id}/parents/"
     )
     parents = request("GET", path, access_token, params=params)
@@ -75,7 +76,7 @@ def get_section_name_code_pairs(
     access_token: str,
 ) -> list:
     """Return Brightspace course section Name/Code pairs for an org unit."""
-    path = f"/d2l/api/lp/{BRIGHTSPACE_API_VERSION}/{org_unit_id}/sections/"
+    path = f"/d2l/api/lp/{BRIGHTSPACE_LP_API_VERSION}/{org_unit_id}/sections/"
     sections = request("GET", path, access_token)
 
     if not isinstance(sections, list):

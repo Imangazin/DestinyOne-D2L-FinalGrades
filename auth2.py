@@ -54,14 +54,6 @@ def build_client_assertion() -> str:
 def get_access_token() -> dict:
     client_assertion = build_client_assertion()
 
-    # Debug: decode JWT without verification
-    decoded = jwt.decode(
-        client_assertion,
-        options={"verify_signature": False, "verify_aud": False},
-        algorithms=["RS256"],
-    )
-    print("Decoded JWT payload:", decoded)
-
     data = {
         "grant_type": "client_credentials",
         "client_id": CLIENT_ID,
@@ -82,9 +74,6 @@ def get_access_token() -> dict:
         timeout=30,
         allow_redirects=False,
     )
-    print("Status:", response.status_code)
-    print("Headers:", dict(response.headers))
-    print("Response:", response.text)
     response.raise_for_status()
     return response.json()
 
