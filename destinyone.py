@@ -165,7 +165,7 @@ def _search_course_sections_page(
 ) -> Dict[str, Any]:
     payload = {
         "searchCourseSectionProfileRequestDetail": {
-            "paginationRequest": {
+            "paginationConstruct": {
                 "pageNumber": page_number,
                 "pageSize": page_size,
             },
