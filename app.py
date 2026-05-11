@@ -131,6 +131,18 @@ def get_displayed_grade(grade):
     return grade_value.get("DisplayedGrade")
 
 
+def normalize_destiny_course_code(course_template_code):
+    if course_template_code.startswith("TEMPLATE_"):
+        course_template_code = course_template_code[len("TEMPLATE_"):]
+    return course_template_code.replace("_", " ")
+
+
+def normalize_destiny_lms_section_id(section_code):
+    if section_code.startswith("SECTION_"):
+        section_code = section_code[len("SECTION_"):]
+    return section_code.replace("_", "")
+
+
 @app.route("/")
 def index():
     return "Flask app is running."
@@ -344,15 +356,20 @@ def transfer_grades():
         workflow["grade_values"] = grade_values
 
         destinyone_session_id = destinyone_login()
+        destiny_course_code = normalize_destiny_course_code(
+            workflow["course_template_code"]
+        )
+        destiny_lms_section_id = normalize_destiny_lms_section_id(selected_section_code)
+
         app.logger.info(
             "Looking up Destiny One course section objectId for courseCode=%s, lmsSectionId=%s.",
-            workflow["course_template_code"],
-            selected_section_code,
+            destiny_course_code,
+            destiny_lms_section_id,
         )
         course_section_profile_object_id = get_course_section_profile_object_id(
             destinyone_session_id,
-            workflow["course_template_code"],
-            selected_section_code,
+            destiny_course_code,
+            destiny_lms_section_id,
         )
         app.logger.info(
             "Resolved Destiny One course section objectId=%s.",
