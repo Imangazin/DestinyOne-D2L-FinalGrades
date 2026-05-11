@@ -226,6 +226,7 @@ def launch():
         return render_workflow_template(workflow)
 
     except Exception:
+        app.logger.exception("Launch workflow failed.")
         return render_template(
             "launch.html",
             workflow_id=None,
@@ -275,6 +276,7 @@ def validate_grades():
             workflow["access_token"],
         )
     except Exception:
+        app.logger.exception("Final grade validation failed.")
         save_workflow(workflow["workflow_id"], workflow)
         return render_workflow_template(
             workflow,
@@ -375,6 +377,7 @@ def transfer_grades():
         )
 
     except Exception:
+        app.logger.exception("Final grade transfer failed.")
         save_workflow(workflow["workflow_id"], workflow)
         return render_workflow_template(
             workflow,
