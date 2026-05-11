@@ -344,10 +344,19 @@ def transfer_grades():
         workflow["grade_values"] = grade_values
 
         destinyone_session_id = destinyone_login()
+        app.logger.info(
+            "Looking up Destiny One course section objectId for courseCode=%s, lmsSectionId=%s.",
+            workflow["course_template_code"],
+            selected_section_code,
+        )
         course_section_profile_object_id = get_course_section_profile_object_id(
             destinyone_session_id,
             workflow["course_template_code"],
             selected_section_code,
+        )
+        app.logger.info(
+            "Resolved Destiny One course section objectId=%s.",
+            course_section_profile_object_id,
         )
 
         transferred_count = 0
