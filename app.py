@@ -1,8 +1,9 @@
 import os
+import uuid
 from dotenv import load_dotenv
 from tempfile import mkdtemp
 
-from flask import Flask, jsonify, request
+from flask import Flask, render_template, request, session
 from flask_caching import Cache
 from pylti1p3.contrib.flask import FlaskOIDCLogin, FlaskMessageLaunch
 from pylti1p3.contrib.flask.request import FlaskRequest
@@ -11,8 +12,17 @@ from pylti1p3.tool_config import ToolConfJsonFile
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 from auth2 import get_access_token
-from brightspace_grades import get_final_grade_values
-from destinyone import login as destinyone_login
+from brightspace_grades import (
+    BrightspaceParentLookupError,
+    get_course_template_code,
+    get_final_grade_values,
+    get_section_name_code_pairs,
+)
+from destinyone import (
+    create_or_update_student_final_grade,
+    get_course_section_profile_object_id,
+    login as destinyone_login,
+)
 
 load_dotenv()
 
@@ -44,10 +54,77 @@ cache = Cache(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 tool_conf = ToolConfJsonFile(os.path.join(BASE_DIR, "tool_config.json"))
+WORKFLOW_CACHE_PREFIX = "final-grades-workflow:"
 
 
 def get_launch_data_storage():
     return FlaskCacheDataStorage(cache)
+
+
+def workflow_cache_key(workflow_id):
+    return WORKFLOW_CACHE_PREFIX + workflow_id
+
+
+def save_workflow(workflow_id, workflow):
+    cache.set(workflow_cache_key(workflow_id), workflow, timeout=3600)
+
+
+def get_workflow(workflow_id):
+    if not workflow_id:
+        return None
+    if workflow_id not in session.get("workflow_ids", []):
+        return None
+    return cache.get(workflow_cache_key(workflow_id))
+
+
+def allow_workflow_for_session(workflow_id):
+    workflow_ids = session.get("workflow_ids", [])
+    if workflow_id not in workflow_ids:
+        workflow_ids.append(workflow_id)
+    session["workflow_ids"] = workflow_ids
+
+
+def render_workflow_template(workflow, **kwargs):
+    context = {
+        "workflow_id": workflow.get("workflow_id"),
+        "org_unit_id": workflow.get("org_unit_id"),
+        "course_template_code": workflow.get("course_template_code"),
+        "sections": workflow.get("sections", []),
+        "selected_section_code": workflow.get("selected_section_code", ""),
+        "mode": "validate",
+        "message": None,
+        "warning": None,
+        "error_message": None,
+        "transfer_result": None,
+    }
+    context.update(kwargs)
+    return render_template("launch.html", **context)
+
+
+def grade_has_displayed_grade(grade):
+    if not isinstance(grade, dict):
+        return False
+
+    grade_value = grade.get("GradeValue")
+    if not isinstance(grade_value, dict):
+        return False
+
+    displayed_grade = grade_value.get("DisplayedGrade")
+    return displayed_grade not in (None, "")
+
+
+def get_student_login_id(grade):
+    user = grade.get("User") if isinstance(grade, dict) else None
+    if not isinstance(user, dict):
+        return None
+    return user.get("UserName")
+
+
+def get_displayed_grade(grade):
+    grade_value = grade.get("GradeValue") if isinstance(grade, dict) else None
+    if not isinstance(grade_value, dict):
+        return None
+    return grade_value.get("DisplayedGrade")
 
 
 @app.route("/")
@@ -95,23 +172,215 @@ def launch():
         org_unit_id = context_data.get("id")
 
         if not org_unit_id:
-            return {"error": "Missing Brightspace org unit ID in LTI context claim."}, 400
+            return render_template(
+                "launch.html",
+                workflow_id=None,
+                org_unit_id=None,
+                course_template_code=None,
+                sections=[],
+                selected_section_code="",
+                mode="validate",
+                message=None,
+                warning=None,
+                error_message="Error occured. Contact CPI for assistance.",
+                transfer_result=None,
+            ), 400
 
         token_response = get_access_token()
-        grade_values = get_final_grade_values(
-            org_unit_id,
-            token_response["access_token"],
-        )
-        destinyone_session_id = destinyone_login()
+        access_token = token_response["access_token"]
 
-        return jsonify({
+        try:
+            course_template_code = get_course_template_code(org_unit_id, access_token)
+        except BrightspaceParentLookupError:
+            return render_template(
+                "launch.html",
+                workflow_id=None,
+                org_unit_id=org_unit_id,
+                course_template_code=None,
+                sections=[],
+                selected_section_code="",
+                mode="validate",
+                message=None,
+                warning=None,
+                error_message=(
+                    "Current course has multiple parent templates. "
+                    "Please contact CPI for assisstance."
+                ),
+                transfer_result=None,
+            )
+
+        sections = get_section_name_code_pairs(org_unit_id, access_token)
+        workflow_id = uuid.uuid4().hex
+        workflow = {
+            "workflow_id": workflow_id,
             "org_unit_id": org_unit_id,
-            "grade_values": grade_values,
-            "destinyone_session_id": destinyone_session_id,
-        })
+            "access_token": access_token,
+            "course_template_code": course_template_code,
+            "sections": sections,
+            "selected_section_code": "",
+            "grade_values": [],
+        }
+        save_workflow(workflow_id, workflow)
+        allow_workflow_for_session(workflow_id)
 
-    except Exception as e:
-        return {"error": str(e)}, 400
+        return render_workflow_template(workflow)
+
+    except Exception:
+        return render_template(
+            "launch.html",
+            workflow_id=None,
+            org_unit_id=None,
+            course_template_code=None,
+            sections=[],
+            selected_section_code="",
+            mode="validate",
+            message=None,
+            warning=None,
+            error_message="Error occured. Contact CPI for assistance.",
+            transfer_result=None,
+        ), 400
+
+
+@app.route("/validate/", methods=["POST"])
+def validate_grades():
+    workflow = get_workflow(request.form.get("workflow_id"))
+    if not workflow:
+        return render_template(
+            "launch.html",
+            workflow_id=None,
+            org_unit_id=None,
+            course_template_code=None,
+            sections=[],
+            selected_section_code="",
+            mode="validate",
+            message=None,
+            warning=None,
+            error_message="Error occured. Contact CPI for assistance.",
+            transfer_result=None,
+        ), 400
+
+    selected_section_code = request.form.get("section_code", "")
+    workflow["selected_section_code"] = selected_section_code
+
+    if not selected_section_code:
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            error_message="Please select a section.",
+        )
+
+    try:
+        grade_values = get_final_grade_values(
+            workflow["org_unit_id"],
+            workflow["access_token"],
+        )
+    except Exception:
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            error_message="Error occured. Contact CPI for assistance.",
+        )
+
+    workflow["grade_values"] = grade_values
+    save_workflow(workflow["workflow_id"], workflow)
+
+    warning = None
+    if any(not grade_has_displayed_grade(grade) for grade in grade_values):
+        warning = (
+            "There is at least one student has no grade. "
+            "Would you like to continue?"
+        )
+
+    return render_workflow_template(
+        workflow,
+        mode="transfer",
+        warning=warning,
+        message="Grades validated.",
+    )
+
+
+@app.route("/transfer/", methods=["POST"])
+def transfer_grades():
+    workflow = get_workflow(request.form.get("workflow_id"))
+    if not workflow:
+        return render_template(
+            "launch.html",
+            workflow_id=None,
+            org_unit_id=None,
+            course_template_code=None,
+            sections=[],
+            selected_section_code="",
+            mode="validate",
+            message=None,
+            warning=None,
+            error_message="Error occured. Contact CPI for assistance.",
+            transfer_result=None,
+        ), 400
+
+    selected_section_code = request.form.get("section_code") or workflow.get(
+        "selected_section_code",
+        "",
+    )
+    workflow["selected_section_code"] = selected_section_code
+
+    if not selected_section_code:
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            error_message="Please select a section.",
+        )
+
+    try:
+        grade_values = workflow.get("grade_values") or get_final_grade_values(
+            workflow["org_unit_id"],
+            workflow["access_token"],
+        )
+        workflow["grade_values"] = grade_values
+
+        destinyone_session_id = destinyone_login()
+        course_section_profile_object_id = get_course_section_profile_object_id(
+            destinyone_session_id,
+            workflow["course_template_code"],
+            selected_section_code,
+        )
+
+        transferred_count = 0
+        skipped_count = 0
+        for grade in grade_values:
+            student_login_id = get_student_login_id(grade)
+            final_grade = get_displayed_grade(grade)
+
+            if not student_login_id or final_grade in (None, ""):
+                skipped_count += 1
+                continue
+
+            create_or_update_student_final_grade(
+                destinyone_session_id,
+                course_section_profile_object_id,
+                student_login_id,
+                final_grade,
+            )
+            transferred_count += 1
+
+        save_workflow(workflow["workflow_id"], workflow)
+
+        return render_workflow_template(
+            workflow,
+            mode="transfer",
+            transfer_result={
+                "transferred_count": transferred_count,
+                "skipped_count": skipped_count,
+            },
+            message="Grade transfer completed.",
+        )
+
+    except Exception:
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            mode="transfer",
+            error_message="Error occured. Contact CPI for assistance.",
+        )
 
 
 @app.route("/jwks/", methods=["GET"])

@@ -4,7 +4,16 @@ from brightspace_api import (
     BRIGHTSPACE_API_VERSION,
     DEFAULT_PAGE_SIZE,
     get_all_object_pages,
+    request,
 )
+
+
+class BrightspaceParentLookupError(Exception):
+    """Raised when a course parent template lookup returns an unexpected result."""
+
+
+class BrightspaceSectionLookupError(Exception):
+    """Raised when a course section lookup returns an unexpected result."""
 
 
 def get_final_grade_values(
@@ -23,3 +32,81 @@ def get_final_grade_values(
         f"{org_unit_id}/grades/final/values/"
     )
     return get_all_object_pages(path, access_token, params=params)
+
+
+def get_course_template_code(
+    org_unit_id: Union[int, str],
+    access_token: str,
+    *,
+    ou_type_id: int = 2,
+) -> str:
+    """Return the single parent course template code for a Brightspace org unit."""
+    params = {
+        "ouTypeId": ou_type_id,
+    }
+    path = (
+        f"/d2l/api/lp/{BRIGHTSPACE_API_VERSION}/"
+        f"orgstructure/{org_unit_id}/parents/"
+    )
+    parents = request("GET", path, access_token, params=params)
+
+    if not isinstance(parents, list) or len(parents) != 1:
+        raise BrightspaceParentLookupError(
+            "Expected exactly one course template parent for org unit {org_unit_id}; "
+            "received {count}.".format(
+                org_unit_id=org_unit_id,
+                count=len(parents) if isinstance(parents, list) else "non-list response",
+            )
+        )
+
+    code = parents[0].get("Code")
+    if not code:
+        raise BrightspaceParentLookupError(
+            "Course template parent for org unit {org_unit_id} did not include Code.".format(
+                org_unit_id=org_unit_id,
+            )
+        )
+
+    return code
+
+
+def get_section_name_code_pairs(
+    org_unit_id: Union[int, str],
+    access_token: str,
+) -> list:
+    """Return Brightspace course section Name/Code pairs for an org unit."""
+    path = f"/d2l/api/lp/{BRIGHTSPACE_API_VERSION}/{org_unit_id}/sections/"
+    sections = request("GET", path, access_token)
+
+    if not isinstance(sections, list):
+        raise BrightspaceSectionLookupError(
+            "Expected section list for org unit {org_unit_id}; received non-list response.".format(
+                org_unit_id=org_unit_id,
+            )
+        )
+
+    pairs = []
+    for section in sections:
+        if not isinstance(section, dict):
+            raise BrightspaceSectionLookupError(
+                "Expected section object for org unit {org_unit_id}; received {section}.".format(
+                    org_unit_id=org_unit_id,
+                    section=section,
+                )
+            )
+
+        name = section.get("Name")
+        code = section.get("Code")
+        if not name or not code:
+            raise BrightspaceSectionLookupError(
+                "Section for org unit {org_unit_id} did not include Name and Code.".format(
+                    org_unit_id=org_unit_id,
+                )
+            )
+
+        pairs.append({
+            "Name": name,
+            "Code": code,
+        })
+
+    return pairs

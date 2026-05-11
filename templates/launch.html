@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Destiny One Final Grades</title>
+    <style>
+        body {
+            margin: 0;
+            color: #202428;
+            font-family: Lato, "Lucida Sans Unicode", "Lucida Grande", Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        main {
+            width: min(100%, 760px);
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            margin: 0 0 16px;
+            font-size: 22px;
+        }
+
+        form {
+            display: grid;
+            gap: 12px;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+        }
+
+        select {
+            width: 100%;
+            min-height: 40px;
+            margin-top: 6px;
+            border: 1px solid #aab4bf;
+            border-radius: 4px;
+            padding: 0 10px;
+            background: #ffffff;
+            color: #202428;
+            font: inherit;
+        }
+
+        button {
+            justify-self: start;
+            min-height: 38px;
+            border: 1px solid #00498f;
+            border-radius: 4px;
+            padding: 0 16px;
+            background: #005eb8;
+            color: #ffffff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .message,
+        .warning,
+        .error,
+        .result {
+            margin-bottom: 14px;
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .message,
+        .result {
+            border: 1px solid #98c7ad;
+            background: #f3fbf6;
+            color: #1b6e43;
+        }
+
+        .warning {
+            border: 1px solid #d5b15c;
+            background: #fff9e8;
+            color: #725000;
+        }
+
+        .error {
+            border: 1px solid #d7a4a4;
+            background: #fff7f7;
+            color: #8a1f1f;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Destiny One Final Grades</h1>
+
+        {% if error_message %}
+            <div class="error">{{ error_message }}</div>
+        {% endif %}
+
+        {% if message %}
+            <div class="message">{{ message }}</div>
+        {% endif %}
+
+        {% if warning %}
+            <div class="warning">{{ warning }}</div>
+        {% endif %}
+
+        {% if transfer_result %}
+            <div class="result">
+                {{ transfer_result.transferred_count }} grades transferred.
+                {{ transfer_result.skipped_count }} grades skipped.
+            </div>
+        {% endif %}
+
+        {% if workflow_id %}
+            <form method="post" action="{% if mode == 'transfer' %}/transfer/{% else %}/validate/{% endif %}">
+                <input type="hidden" name="workflow_id" value="{{ workflow_id }}">
+
+                <label for="section-code">
+                    Section
+                    <select id="section-code" name="section_code">
+                        <option value="">Select Section</option>
+                        {% for section in sections %}
+                            <option value="{{ section.Code }}" {% if selected_section_code == section.Code %}selected{% endif %}>
+                                {{ section.Code }} - {{ section.Name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                {% if mode == "transfer" %}
+                    <button type="submit">Transfer Grades</button>
+                {% else %}
+                    <button type="submit">Validate</button>
+                {% endif %}
+            </form>
+        {% endif %}
+    </main>
+</body>
+</html>

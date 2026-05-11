@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -25,6 +25,10 @@ class DestinyOneError(Exception):
 
 class DestinyOneAuthError(DestinyOneError):
     """Raised when Destiny One login fails or no sessionId is returned."""
+
+
+class DestinyOneCourseSectionLookupError(DestinyOneError):
+    """Raised when a course section lookup returns an unexpected result."""
 
 
 def _base_url() -> str:
@@ -124,6 +128,117 @@ def login(
     }
     url = _service_url(INTERNAL_REST_PATH, "login")
     return _extract_session_id(_request("GET", url, params=params))
+
+
+def _as_list(value: Any) -> List[Any]:
+    if value in (None, ""):
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _course_section_profiles(response: Dict[str, Any]) -> List[Any]:
+    result = response.get("SearchCourseSectionProfileResult", {})
+    profiles = result.get("courseSectionProfiles", {})
+    return _as_list(profiles.get("courseSectionProfile"))
+
+
+def _pagination(response: Dict[str, Any]) -> Dict[str, Any]:
+    result = response.get("SearchCourseSectionProfileResult", {})
+    pagination = result.get("paginationResponse", {})
+    return pagination if isinstance(pagination, dict) else {}
+
+
+def _to_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _search_course_sections_page(
+    session_id: str,
+    brightspace_template_code: str,
+    page_number: int,
+    page_size: int,
+) -> Dict[str, Any]:
+    payload = {
+        "searchCourseSectionProfileRequestDetail": {
+            "paginationRequest": {
+                "pageNumber": page_number,
+                "pageSize": page_size,
+            },
+            "courseSectionSearchCriteria": {
+                "courseCode": brightspace_template_code,
+            },
+        }
+    }
+    url = _service_url(INTERNAL_REST_PATH, "searchCourseSection")
+    params = {
+        "informationLevel": "full",
+        "_type": "json",
+    }
+    return _request("POST", url, session_id=session_id, params=params, json=payload)
+
+
+def get_course_section_profile_object_id(
+    session_id: str,
+    brightspace_template_code: str,
+    brightspace_section_code: str,
+    page_size: int = 25,
+) -> int:
+    """Return the Destiny One section profile objectId matching a Brightspace section."""
+    matches = []
+    page_number = 1
+    total_count = None
+
+    while True:
+        response = _search_course_sections_page(
+            session_id,
+            brightspace_template_code,
+            page_number,
+            page_size,
+        )
+
+        for profile in _course_section_profiles(response):
+            if not isinstance(profile, dict):
+                continue
+
+            lms_info = profile.get("sectionLMSInfo")
+            if not isinstance(lms_info, dict):
+                continue
+
+            if lms_info.get("lmsSectionId") == brightspace_section_code:
+                matches.append(profile)
+
+        pagination = _pagination(response)
+        if total_count is None:
+            total_count = _to_int(pagination.get("totalCount"), len(matches))
+
+        response_page_size = _to_int(pagination.get("pageSize"), page_size)
+        if page_number * response_page_size >= total_count:
+            break
+
+        page_number += 1
+
+    if len(matches) != 1:
+        raise DestinyOneCourseSectionLookupError(
+            "Expected exactly one Destiny One course section for courseCode "
+            "{course_code} and lmsSectionId {section_code}; received {count}.".format(
+                course_code=brightspace_template_code,
+                section_code=brightspace_section_code,
+                count=len(matches),
+            )
+        )
+
+    object_id = matches[0].get("objectId")
+    if object_id is None:
+        raise DestinyOneCourseSectionLookupError(
+            "Matched Destiny One course section did not include objectId."
+        )
+
+    return int(object_id)
 
 
 def create_or_update_student_final_grade(
