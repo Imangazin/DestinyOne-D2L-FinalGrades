@@ -117,11 +117,11 @@
 
                 <label for="section-code">
                     Section
-                    <select id="section-code" name="section_code">
+                    <select id="section-code" name="section_code" required>
                         <option value="">Select Section</option>
                         {% for section in sections %}
                             <option value="{{ section.Code }}" {% if selected_section_code == section.Code %}selected{% endif %}>
-                                {{ section.Code }} - {{ section.Name }}
+                                {{ section.Name }}
                             </option>
                         {% endfor %}
                     </select>
