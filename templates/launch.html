@@ -11,17 +11,25 @@
             font-family: Lato, "Lucida Sans Unicode", "Lucida Grande", Arial, sans-serif;
             font-size: 14px;
             line-height: 1.45;
+            overflow-x: hidden;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         main {
-            width: min(100%, 760px);
-            margin: 0 auto;
-            padding: 20px;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 12px;
+            overflow-x: hidden;
         }
 
         h1 {
-            margin: 0 0 16px;
-            font-size: 22px;
+            margin: 0 0 12px;
+            font-size: 20px;
+            line-height: 1.25;
         }
 
         form {
@@ -36,6 +44,7 @@
 
         select {
             width: 100%;
+            max-width: 100%;
             min-height: 40px;
             margin-top: 6px;
             border: 1px solid #aab4bf;
@@ -44,6 +53,7 @@
             background: #ffffff;
             color: #202428;
             font: inherit;
+            text-overflow: ellipsis;
         }
 
         button {
@@ -63,9 +73,11 @@
         .warning,
         .error,
         .result {
-            margin-bottom: 14px;
+            width: 100%;
+            margin-bottom: 12px;
             border-radius: 4px;
-            padding: 12px;
+            padding: 10px 12px;
+            overflow-wrap: anywhere;
         }
 
         .message,
