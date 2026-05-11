@@ -28,6 +28,7 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 APP_FOLDER = os.getenv("APP_FOLDER")
+APP_URL_PREFIX = os.getenv("APP_URL_PREFIX") or (f"/{APP_FOLDER}" if APP_FOLDER else "")
 CACHE_DIR = os.getenv("FLASK_CACHE_DIR") or f"/tmp/{APP_FOLDER}-flask-cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -85,6 +86,7 @@ def allow_workflow_for_session(workflow_id):
 
 
 def render_workflow_template(workflow, **kwargs):
+    app_url_prefix = APP_URL_PREFIX.rstrip("/")
     context = {
         "workflow_id": workflow.get("workflow_id"),
         "org_unit_id": workflow.get("org_unit_id"),
@@ -96,6 +98,8 @@ def render_workflow_template(workflow, **kwargs):
         "warning": None,
         "error_message": None,
         "transfer_result": None,
+        "validate_url": app_url_prefix + "/validate/",
+        "transfer_url": app_url_prefix + "/transfer/",
     }
     context.update(kwargs)
     return render_template("launch.html", **context)
