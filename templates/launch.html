@@ -124,7 +124,11 @@
         {% endif %}
 
         {% if workflow_id %}
-            <form method="post" action="{% if mode == 'transfer' %}{{ transfer_url }}{% else %}{{ validate_url }}{% endif %}">
+            <form
+                method="post"
+                action="{% if mode == 'transfer' %}{{ transfer_url }}{% else %}{{ validate_url }}{% endif %}"
+                data-validate-url="{{ validate_url }}"
+            >
                 <input type="hidden" name="workflow_id" value="{{ workflow_id }}">
 
                 <label for="section-code">
@@ -140,12 +144,41 @@
                 </label>
 
                 {% if mode == "transfer" %}
-                    <button type="submit">Transfer Grades</button>
+                    <button type="submit" id="submit-button">Transfer Grades</button>
                 {% else %}
-                    <button type="submit">Validate</button>
+                    <button type="submit" id="submit-button">Validate</button>
                 {% endif %}
             </form>
         {% endif %}
     </main>
+    <script>
+        (function () {
+            var form = document.querySelector("form[data-validate-url]");
+            var section = document.getElementById("section-code");
+            var button = document.getElementById("submit-button");
+
+            if (!form || !section || !button) {
+                return;
+            }
+
+            var initialSectionCode = section.value;
+
+            section.addEventListener("change", function () {
+                if (section.value === initialSectionCode) {
+                    return;
+                }
+
+                form.action = form.getAttribute("data-validate-url");
+                button.textContent = "Validate";
+
+                Array.prototype.forEach.call(
+                    document.querySelectorAll(".message, .warning, .result"),
+                    function (element) {
+                        element.parentNode.removeChild(element);
+                    }
+                );
+            });
+        })();
+    </script>
 </body>
 </html>

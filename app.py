@@ -131,6 +131,13 @@ def get_displayed_grade(grade):
     return grade_value.get("DisplayedGrade")
 
 
+def get_selected_section(workflow, section_code):
+    for section in workflow.get("sections", []):
+        if section.get("Code") == section_code:
+            return section
+    return None
+
+
 def normalize_destiny_course_code(course_template_code):
     if course_template_code.startswith("TEMPLATE_"):
         course_template_code = course_template_code[len("TEMPLATE_"):]
@@ -235,6 +242,7 @@ def launch():
             "sections": sections,
             "selected_section_code": "",
             "grade_values": [],
+            "grades_section_code": "",
         }
         save_workflow(workflow_id, workflow)
         allow_workflow_for_session(workflow_id)
@@ -286,9 +294,17 @@ def validate_grades():
             error_message="Please select a section.",
         )
 
+    selected_section = get_selected_section(workflow, selected_section_code)
+    if not selected_section:
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            error_message="Please select a section.",
+        )
+
     try:
         grade_values = get_final_grade_values(
-            workflow["org_unit_id"],
+            selected_section["SectionId"],
             workflow["access_token"],
         )
     except Exception:
@@ -300,6 +316,7 @@ def validate_grades():
         )
 
     workflow["grade_values"] = grade_values
+    workflow["grades_section_code"] = selected_section_code
     save_workflow(workflow["workflow_id"], workflow)
 
     warning = None
@@ -339,6 +356,7 @@ def transfer_grades():
         "selected_section_code",
         "",
     )
+    validated_section_code = workflow.get("grades_section_code", "")
     workflow["selected_section_code"] = selected_section_code
 
     if not selected_section_code:
@@ -348,12 +366,40 @@ def transfer_grades():
             error_message="Please select a section.",
         )
 
-    try:
-        grade_values = workflow.get("grade_values") or get_final_grade_values(
-            workflow["org_unit_id"],
-            workflow["access_token"],
+    if selected_section_code != validated_section_code:
+        workflow["grade_values"] = []
+        workflow["grades_section_code"] = ""
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            mode="validate",
+            message=None,
+            warning=None,
+            transfer_result=None,
+            error_message=None,
         )
-        workflow["grade_values"] = grade_values
+
+    selected_section = get_selected_section(workflow, selected_section_code)
+    if not selected_section:
+        save_workflow(workflow["workflow_id"], workflow)
+        return render_workflow_template(
+            workflow,
+            error_message="Please select a section.",
+        )
+
+    try:
+        if workflow.get("grades_section_code") == selected_section_code:
+            grade_values = workflow.get("grade_values", [])
+        else:
+            grade_values = []
+
+        if not grade_values:
+            grade_values = get_final_grade_values(
+                selected_section["SectionId"],
+                workflow["access_token"],
+            )
+            workflow["grade_values"] = grade_values
+            workflow["grades_section_code"] = selected_section_code
 
         destinyone_session_id = destinyone_login()
         destiny_course_code = normalize_destiny_course_code(

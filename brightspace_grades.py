@@ -98,14 +98,16 @@ def get_section_name_code_pairs(
 
         name = section.get("Name")
         code = section.get("Code")
-        if not name or not code:
+        section_id = section.get("SectionId")
+        if not name or not code or section_id is None:
             raise BrightspaceSectionLookupError(
-                "Section for org unit {org_unit_id} did not include Name and Code.".format(
+                "Section for org unit {org_unit_id} did not include SectionId, Name, and Code.".format(
                     org_unit_id=org_unit_id,
                 )
             )
 
         pairs.append({
+            "SectionId": section_id,
             "Name": name,
             "Code": code,
         })
