@@ -304,7 +304,7 @@ def validate_grades():
 
     try:
         grade_values = get_final_grade_values(
-            selected_section["SectionId"],
+            workflow["org_unit_id"],
             workflow["access_token"],
         )
     except Exception:
@@ -395,7 +395,7 @@ def transfer_grades():
 
         if not grade_values:
             grade_values = get_final_grade_values(
-                selected_section["SectionId"],
+                workflow["org_unit_id"],
                 workflow["access_token"],
             )
             workflow["grade_values"] = grade_values
