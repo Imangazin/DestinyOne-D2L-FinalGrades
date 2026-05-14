@@ -247,11 +247,15 @@
                 button.textContent = "Validate";
 
                 Array.prototype.forEach.call(
-                    document.querySelectorAll(".message, .warning, .result"),
+                    document.querySelectorAll(".message, .warning, .result, .failure-list, .error"),
                     function (element) {
                         element.parentNode.removeChild(element);
                     }
                 );
+
+                if (busy) {
+                    busy.className = "busy";
+                }
             });
 
             form.addEventListener("submit", function () {
