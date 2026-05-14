@@ -20,6 +20,7 @@ from brightspace_grades import (
 )
 from destinyone import (
     create_or_update_student_final_grade,
+    DestinyOneError,
     get_course_section_profile_object_id,
     login as destinyone_login,
 )
@@ -148,6 +149,16 @@ def normalize_destiny_lms_section_id(section_code):
     if section_code.startswith("SECTION_"):
         section_code = section_code[len("SECTION_"):]
     return section_code.replace("_", "")
+
+
+def destiny_error_message(error):
+    message = str(error)
+    marker = "'message': '"
+    if marker not in message:
+        return message
+
+    message = message.split(marker, 1)[1]
+    return message.split("'", 1)[0]
 
 
 @app.route("/")
@@ -424,6 +435,7 @@ def transfer_grades():
 
         transferred_count = 0
         skipped_count = 0
+        failures = []
         for grade in grade_values:
             student_login_id = get_student_login_id(grade)
             final_grade = get_displayed_grade(grade)
@@ -432,13 +444,20 @@ def transfer_grades():
                 skipped_count += 1
                 continue
 
-            create_or_update_student_final_grade(
-                destinyone_session_id,
-                course_section_profile_object_id,
-                student_login_id,
-                final_grade,
-            )
-            transferred_count += 1
+            try:
+                create_or_update_student_final_grade(
+                    destinyone_session_id,
+                    course_section_profile_object_id,
+                    student_login_id,
+                    final_grade,
+                )
+                transferred_count += 1
+            except DestinyOneError as e:
+                failures.append({
+                    "student_login_id": student_login_id,
+                    "grade": final_grade,
+                    "error": destiny_error_message(e),
+                })
 
         save_workflow(workflow["workflow_id"], workflow)
 
@@ -448,6 +467,8 @@ def transfer_grades():
             transfer_result={
                 "transferred_count": transferred_count,
                 "skipped_count": skipped_count,
+                "failed_count": len(failures),
+                "failures": failures,
             },
             message="Grade transfer completed.",
         )
