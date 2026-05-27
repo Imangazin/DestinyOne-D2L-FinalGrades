@@ -153,6 +153,41 @@
         .failure-list li + li {
             margin-top: 6px;
         }
+
+        .validation-preview {
+            width: 100%;
+            margin-bottom: 12px;
+            overflow-x: auto;
+        }
+
+        .validation-preview table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            border: 1px solid #c8d2dc;
+        }
+
+        .validation-preview th,
+        .validation-preview td {
+            border-bottom: 1px solid #d8e0e8;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+
+        .validation-preview th {
+            background: #f4f7fa;
+            font-weight: 700;
+        }
+
+        .validation-preview tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .validation-preview .row-error {
+            color: #8a1f1f;
+        }
     </style>
 </head>
 <body>
@@ -171,6 +206,33 @@
             <div class="warning">{{ warning }}</div>
         {% endif %}
 
+        {% if validation_rows and mode == "transfer" and not transfer_result %}
+            <div class="validation-preview">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Calculated Final Grade</th>
+                            <th>Calculated Percentage</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in validation_rows %}
+                            <tr>
+                                <td>{{ row.student_login_id }}</td>
+                                <td>{{ row.letter_grade }}</td>
+                                <td>{{ row.percentage_grade }}</td>
+                                <td class="{% if row.error %}row-error{% endif %}">
+                                    {% if row.error %}{{ row.error }}{% else %}Ready{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
         {% if transfer_result %}
             <div class="result">
                 {{ transfer_result.transferred_count }} grades transferred.
@@ -178,13 +240,27 @@
                 {{ transfer_result.failed_count }} grades failed.
             </div>
 
+            {% if transfer_result.skipped %}
+                <div class="failure-list">
+                    <h2>Skipped Grades</h2>
+                    <ul>
+                        {% for skipped in transfer_result.skipped %}
+                            <li>
+                                {{ skipped.student_login_id }}:
+                                {{ skipped.error }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
             {% if transfer_result.failures %}
                 <div class="failure-list">
                     <h2>Failed Grades</h2>
                     <ul>
                         {% for failure in transfer_result.failures %}
                             <li>
-                                {{ failure.student_login_id }} — {{ failure.grade }}:
+                                {{ failure.student_login_id }} - {{ failure.grade }}:
                                 {{ failure.error }}
                             </li>
                         {% endfor %}
@@ -247,7 +323,7 @@
                 button.textContent = "Validate";
 
                 Array.prototype.forEach.call(
-                    document.querySelectorAll(".message, .warning, .result, .failure-list, .error"),
+                    document.querySelectorAll(".message, .warning, .result, .failure-list, .error, .validation-preview"),
                     function (element) {
                         element.parentNode.removeChild(element);
                     }

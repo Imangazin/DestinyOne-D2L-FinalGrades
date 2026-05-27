@@ -110,6 +110,7 @@ def get_section_name_code_pairs(
             "SectionId": section_id,
             "Name": name,
             "Code": code,
+            "Enrollments": section.get("Enrollments", []),
         })
 
     return pairs

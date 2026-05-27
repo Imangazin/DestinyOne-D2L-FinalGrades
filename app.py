@@ -99,6 +99,7 @@ def render_workflow_template(workflow, **kwargs):
         "warning": None,
         "error_message": None,
         "transfer_result": None,
+        "validation_rows": workflow.get("validation_rows", []),
         "validate_url": app_url_prefix + "/validate/",
         "transfer_url": app_url_prefix + "/transfer/",
     }
@@ -114,8 +115,14 @@ def grade_has_displayed_grade(grade):
     if not isinstance(grade_value, dict):
         return False
 
-    displayed_grade = grade_value.get("DisplayedGrade")
-    return displayed_grade not in (None, "")
+    numerator = grade_value.get("PointsNumerator")
+    if numerator in (None, ""):
+        return False
+
+    try:
+        return float(numerator) != 0
+    except (TypeError, ValueError):
+        return False
 
 
 def get_student_login_id(grade):
@@ -125,11 +132,84 @@ def get_student_login_id(grade):
     return user.get("UserName")
 
 
-def get_displayed_grade(grade):
+def get_grade_value(grade):
     grade_value = grade.get("GradeValue") if isinstance(grade, dict) else None
     if not isinstance(grade_value, dict):
-        return None
-    return grade_value.get("DisplayedGrade")
+        return {}
+    return grade_value
+
+
+def calculate_destiny_grade(grade):
+    return calculate_destiny_grade_result(grade)["letter_grade"]
+
+
+def calculate_destiny_grade_result(grade):
+    grade_value = get_grade_value(grade)
+    numerator = grade_value.get("PointsNumerator")
+    denominator = grade_value.get("PointsDenominator")
+
+    if numerator is None:
+        raise ValueError("Missing PointsNumerator.")
+
+    try:
+        numerator = float(numerator)
+        denominator = float(denominator)
+    except (TypeError, ValueError):
+        raise ValueError("PointsNumerator or PointsDenominator is not numeric.")
+
+    if denominator == 0:
+        raise ValueError("PointsDenominator is 0.")
+
+    percent = (numerator / denominator) * 100
+
+    if numerator == 0:
+        return {
+            "letter_grade": "IC",
+            "percentage_grade": percent,
+        }
+
+    if 80 <= percent <= 100:
+        letter_grade = "A"
+    elif 70 <= percent < 80:
+        letter_grade = "B"
+    elif 51 <= percent < 70:
+        letter_grade = "C"
+    elif 1 <= percent < 51:
+        letter_grade = "F"
+    else:
+        raise ValueError("Calculated grade percent is outside Destiny grade ranges.")
+
+    return {
+        "letter_grade": letter_grade,
+        "percentage_grade": percent,
+    }
+
+
+def build_validation_rows(grade_values):
+    rows = []
+
+    for grade in grade_values:
+        student_login_id = get_student_login_id(grade) or "N/A"
+
+        try:
+            grade_result = calculate_destiny_grade_result(grade)
+            rows.append({
+                "student_login_id": student_login_id,
+                "letter_grade": grade_result["letter_grade"],
+                "percentage_grade": "{0:.2f}%".format(
+                    grade_result["percentage_grade"]
+                ),
+                "error": "",
+            })
+        except ValueError as e:
+            rows.append({
+                "student_login_id": student_login_id,
+                "letter_grade": "N/A",
+                "percentage_grade": "N/A",
+                "error": str(e),
+            })
+
+    return rows
 
 
 def get_selected_section(workflow, section_code):
@@ -137,6 +217,27 @@ def get_selected_section(workflow, section_code):
         if section.get("Code") == section_code:
             return section
     return None
+
+
+def filter_grades_for_section(grade_values, selected_section):
+    enrollment_ids = set(
+        str(enrollment_id)
+        for enrollment_id in selected_section.get("Enrollments", [])
+    )
+
+    if not enrollment_ids:
+        return []
+
+    section_grades = []
+    for grade in grade_values:
+        user = grade.get("User") if isinstance(grade, dict) else None
+        if not isinstance(user, dict):
+            continue
+
+        if str(user.get("Identifier")) in enrollment_ids:
+            section_grades.append(grade)
+
+    return section_grades
 
 
 def normalize_destiny_course_code(course_template_code):
@@ -254,6 +355,7 @@ def launch():
             "selected_section_code": "",
             "grade_values": [],
             "grades_section_code": "",
+            "validation_rows": [],
         }
         save_workflow(workflow_id, workflow)
         allow_workflow_for_session(workflow_id)
@@ -318,6 +420,7 @@ def validate_grades():
             workflow["org_unit_id"],
             workflow["access_token"],
         )
+        grade_values = filter_grades_for_section(grade_values, selected_section)
     except Exception:
         app.logger.exception("Final grade validation failed.")
         save_workflow(workflow["workflow_id"], workflow)
@@ -328,6 +431,7 @@ def validate_grades():
 
     workflow["grade_values"] = grade_values
     workflow["grades_section_code"] = selected_section_code
+    workflow["validation_rows"] = build_validation_rows(grade_values)
     save_workflow(workflow["workflow_id"], workflow)
 
     warning = None
@@ -380,6 +484,7 @@ def transfer_grades():
     if selected_section_code != validated_section_code:
         workflow["grade_values"] = []
         workflow["grades_section_code"] = ""
+        workflow["validation_rows"] = []
         save_workflow(workflow["workflow_id"], workflow)
         return render_workflow_template(
             workflow,
@@ -409,8 +514,10 @@ def transfer_grades():
                 workflow["org_unit_id"],
                 workflow["access_token"],
             )
+            grade_values = filter_grades_for_section(grade_values, selected_section)
             workflow["grade_values"] = grade_values
             workflow["grades_section_code"] = selected_section_code
+            workflow["validation_rows"] = build_validation_rows(grade_values)
 
         destinyone_session_id = destinyone_login()
         destiny_course_code = normalize_destiny_course_code(
@@ -435,13 +542,27 @@ def transfer_grades():
 
         transferred_count = 0
         skipped_count = 0
+        skipped = []
         failures = []
         for grade in grade_values:
             student_login_id = get_student_login_id(grade)
-            final_grade = get_displayed_grade(grade)
 
-            if not student_login_id or final_grade in (None, ""):
+            if not student_login_id:
                 skipped_count += 1
+                skipped.append({
+                    "student_login_id": "N/A",
+                    "error": "Missing student login ID.",
+                })
+                continue
+
+            try:
+                final_grade = calculate_destiny_grade(grade)
+            except ValueError as e:
+                skipped_count += 1
+                skipped.append({
+                    "student_login_id": student_login_id,
+                    "error": str(e),
+                })
                 continue
 
             try:
@@ -467,6 +588,7 @@ def transfer_grades():
             transfer_result={
                 "transferred_count": transferred_count,
                 "skipped_count": skipped_count,
+                "skipped": skipped,
                 "failed_count": len(failures),
                 "failures": failures,
             },
