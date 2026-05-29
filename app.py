@@ -132,6 +132,13 @@ def get_student_login_id(grade):
     return user.get("UserName")
 
 
+def get_student_display_name(grade):
+    user = grade.get("User") if isinstance(grade, dict) else None
+    if not isinstance(user, dict):
+        return None
+    return user.get("DisplayName")
+
+
 def get_grade_value(grade):
     grade_value = grade.get("GradeValue") if isinstance(grade, dict) else None
     if not isinstance(grade_value, dict):
@@ -189,12 +196,12 @@ def build_validation_rows(grade_values):
     rows = []
 
     for grade in grade_values:
-        student_login_id = get_student_login_id(grade) or "N/A"
+        student_display_name = get_student_display_name(grade) or "N/A"
 
         try:
             grade_result = calculate_destiny_grade_result(grade)
             rows.append({
-                "student_login_id": student_login_id,
+                "student_display_name": student_display_name,
                 "letter_grade": grade_result["letter_grade"],
                 "percentage_grade": "{0:.2f}%".format(
                     grade_result["percentage_grade"]
@@ -203,7 +210,7 @@ def build_validation_rows(grade_values):
             })
         except ValueError as e:
             rows.append({
-                "student_login_id": student_login_id,
+                "student_display_name": student_display_name,
                 "letter_grade": "N/A",
                 "percentage_grade": "N/A",
                 "error": str(e),

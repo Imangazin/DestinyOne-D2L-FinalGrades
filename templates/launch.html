@@ -32,9 +32,42 @@
             line-height: 1.25;
         }
 
+        .intro {
+            margin-bottom: 16px;
+            color: #394957;
+        }
+
+        .intro p {
+            margin: 0 0 10px;
+        }
+
+        .grade-scheme {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(80px, 1fr));
+            gap: 8px;
+            margin: 10px 0 12px;
+        }
+
+        .grade-scheme-item {
+            border: 1px solid #c8d2dc;
+            border-radius: 4px;
+            padding: 8px 10px;
+            background: #f8fafc;
+        }
+
+        .grade-scheme-item strong {
+            display: block;
+            color: #202428;
+            font-size: 15px;
+        }
+
         @media (max-width: 640px) {
             main {
                 padding: 0 16px 20px;
+            }
+
+            .grade-scheme {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
@@ -200,6 +233,46 @@
     <main>
         <h1>Destiny One Final Grades</h1>
 
+        <div class="intro">
+            <p>
+                This tool transfers Brightspace course final grades to Destiny One.
+                It should be used only for Destiny One (PCS) courses.
+            </p>
+            <p>
+                Brightspace grade schemes may differ from Destiny One. Grades are
+                calculated from the Brightspace final grade percentage and mapped to
+                the Destiny One grade scheme below.
+            </p>
+            <div class="grade-scheme" aria-label="Destiny One grade scheme">
+                <div class="grade-scheme-item">
+                    <strong>A</strong>
+                    80-100%
+                </div>
+                <div class="grade-scheme-item">
+                    <strong>B</strong>
+                    70-79%
+                </div>
+                <div class="grade-scheme-item">
+                    <strong>C</strong>
+                    51-69%
+                </div>
+                <div class="grade-scheme-item">
+                    <strong>F</strong>
+                    1-50%
+                </div>
+                <div class="grade-scheme-item">
+                    <strong>IC</strong>
+                    No final grade
+                </div>
+            </div>
+            <p>
+                Select the section you want to transfer, then click Validate. Review
+                the classlist final grades in the table and check any warnings. Once
+                the grades are confirmed, click Transfer Grades to send them to
+                Destiny One.
+            </p>
+        </div>
+
         {% if error_message %}
             <div class="error">{{ error_message }}</div>
         {% endif %}
@@ -217,7 +290,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Username</th>
+                            <th>Display Name</th>
                             <th>Calculated Final Grade</th>
                             <th>Calculated Percentage</th>
                             <th>Status</th>
@@ -226,7 +299,7 @@
                     <tbody>
                         {% for row in validation_rows %}
                             <tr>
-                                <td>{{ row.student_login_id }}</td>
+                                <td>{{ row.student_display_name }}</td>
                                 <td>{{ row.letter_grade }}</td>
                                 <td>{{ row.percentage_grade }}</td>
                                 <td class="{% if row.error %}row-error{% endif %}">
