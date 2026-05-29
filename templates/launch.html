@@ -325,7 +325,7 @@
                     <ul>
                         {% for skipped in transfer_result.skipped %}
                             <li>
-                                {{ skipped.student_login_id }}:
+                                {{ skipped.student_display_name }}:
                                 {{ skipped.error }}
                             </li>
                         {% endfor %}
@@ -339,7 +339,7 @@
                     <ul>
                         {% for failure in transfer_result.failures %}
                             <li>
-                                {{ failure.student_login_id }} - {{ failure.grade }}:
+                                {{ failure.student_display_name }} - {{ failure.grade }}:
                                 {{ failure.error }}
                             </li>
                         {% endfor %}

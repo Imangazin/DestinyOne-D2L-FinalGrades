@@ -553,11 +553,12 @@ def transfer_grades():
         failures = []
         for grade in grade_values:
             student_login_id = get_student_login_id(grade)
+            student_display_name = get_student_display_name(grade) or "N/A"
 
             if not student_login_id:
                 skipped_count += 1
                 skipped.append({
-                    "student_login_id": "N/A",
+                    "student_display_name": student_display_name,
                     "error": "Missing student login ID.",
                 })
                 continue
@@ -567,7 +568,7 @@ def transfer_grades():
             except ValueError as e:
                 skipped_count += 1
                 skipped.append({
-                    "student_login_id": student_login_id,
+                    "student_display_name": student_display_name,
                     "error": str(e),
                 })
                 continue
@@ -582,7 +583,7 @@ def transfer_grades():
                 transferred_count += 1
             except DestinyOneError as e:
                 failures.append({
-                    "student_login_id": student_login_id,
+                    "student_display_name": student_display_name,
                     "grade": final_grade,
                     "error": destiny_error_message(e),
                 })
