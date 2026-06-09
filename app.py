@@ -190,13 +190,13 @@ def calculate_destiny_grade_result(grade):
     denominator = grade_value.get("PointsDenominator")
 
     if numerator is None:
-        raise ValueError("Missing PointsNumerator.")
+        raise ValueError("No grades entered.")
 
     try:
         numerator = float(numerator)
         denominator = float(denominator)
     except (TypeError, ValueError):
-        raise ValueError("PointsNumerator or PointsDenominator is not numeric.")
+        raise ValueError("No grades entered.")
 
     if denominator == 0:
         raise ValueError("PointsDenominator is 0.")
