@@ -202,15 +202,25 @@ def calculate_destiny_grade_result(grade):
         raise ValueError("PointsDenominator is 0.")
 
     percent = (numerator / denominator) * 100
+    rounded_percent = int(percent + 0.5)
+
+    highest_allowed_percent = max(grade_range["max"] for grade_range in GRADE_SCHEME)
+    lowest_allowed_percent = min(grade_range["min"] for grade_range in GRADE_SCHEME)
+    if (
+        rounded_percent < lowest_allowed_percent
+        or rounded_percent > highest_allowed_percent
+    ):
+        raise ValueError("Calculated grade percent is outside Destiny grade ranges.")
 
     letter_grade = None
-    for grade_range in GRADE_SCHEME:
-        if grade_range["min"] <= percent <= grade_range["max"]:
+    for grade_range in sorted(
+        GRADE_SCHEME,
+        key=lambda current_grade_range: current_grade_range["min"],
+        reverse=True,
+    ):
+        if rounded_percent >= grade_range["min"]:
             letter_grade = grade_range["letter"]
             break
-
-    if letter_grade is None:
-        raise ValueError("Calculated grade percent is outside Destiny grade ranges.")
 
     return {
         "letter_grade": letter_grade,

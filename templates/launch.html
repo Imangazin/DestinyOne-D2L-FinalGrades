@@ -251,9 +251,11 @@
                 {% endfor %}
             </div>
             <p>
-                Manual adjustments or status changes, such as Incomplete, must be
-                performed in Modern Campus. Please communicate any concerns to PCS
-                staff.
+                <strong>
+                    Manual adjustments or status changes, such as Incomplete, must be
+                    performed in Modern Campus. Please communicate any concerns to
+                    PCS staff by emailing ce@brocku.ca.
+                </strong>
             </p>
             <p>
                 Grades of A, B, or C are considered passing if the course is
@@ -267,12 +269,7 @@
         </div>
 
         {% if error_message %}
-            <div class="error">
-                {{ error_message }}
-                {% if "ce@brocku.ca" not in error_message %}
-                    <br>Contact ce@brocku.ca for assistance.
-                {% endif %}
-            </div>
+            <div class="error">{{ error_message }}</div>
         {% endif %}
 
         {% if message %}
@@ -280,12 +277,7 @@
         {% endif %}
 
         {% if warning %}
-            <div class="warning">
-                {{ warning }}
-                {% if "ce@brocku.ca" not in warning %}
-                    <br>Contact ce@brocku.ca for assistance.
-                {% endif %}
-            </div>
+            <div class="warning">{{ warning }}</div>
         {% endif %}
 
         {% if validation_rows and mode == "transfer" and not transfer_result %}
@@ -339,7 +331,6 @@
             {% if transfer_result.failures %}
                 <div class="failure-list">
                     <h2>Failed Grades</h2>
-                    <p>Contact ce@brocku.ca for assistance.</p>
                     <ul>
                         {% for failure in transfer_result.failures %}
                             <li>
