@@ -476,6 +476,13 @@ def validate_grades():
     workflow["validation_rows"] = build_validation_rows(grade_values)
     save_workflow(workflow["workflow_id"], workflow)
 
+    if not grade_values:
+        return render_workflow_template(
+            workflow,
+            mode="validate",
+            warning="There are no students to display for the selected section.",
+        )
+
     warning = None
     if any(not grade_has_displayed_grade(grade) for grade in grade_values):
         warning = (
