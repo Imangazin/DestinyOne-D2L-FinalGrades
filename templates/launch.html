@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Destiny One Final Grades</title>
+    <title>PCS Final Grade Transfer (Brightspace to Modern Campus)</title>
     <style>
         body {
             margin: 0;
@@ -43,7 +43,7 @@
 
         .grade-scheme {
             display: grid;
-            grid-template-columns: repeat(5, minmax(80px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 8px;
             margin: 10px 0 12px;
         }
@@ -66,9 +66,6 @@
                 padding: 0 16px 20px;
             }
 
-            .grade-scheme {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
         }
 
         form {
@@ -231,50 +228,51 @@
 </head>
 <body>
     <main>
-        <h1>Destiny One Final Grades</h1>
+        <h1>PCS Final Grade Transfer (Brightspace to Modern Campus)</h1>
 
         <div class="intro">
             <p>
-                This tool transfers Brightspace course final grades to Destiny One.
-                It should be used only for Destiny One (PCS) courses.
+                Professional and Continuing Studies instructors can use this tool to
+                transfer Brightspace Final Calculated Grades to the Modern Campus
+                system for final approval.
             </p>
             <p>
-                Brightspace grade schemes may differ from Destiny One. Grades are
-                calculated from the Brightspace final grade percentage and mapped to
-                the Destiny One grade scheme below.
+                The options below will pull the Final Calculated Grade column from
+                this site's Grades page and validate it against the grading
+                requirements. A Final Letter Grade will be assigned based on the
+                following grade scheme:
             </p>
             <div class="grade-scheme" aria-label="Destiny One grade scheme">
-                <div class="grade-scheme-item">
-                    <strong>A</strong>
-                    80-100%
-                </div>
-                <div class="grade-scheme-item">
-                    <strong>B</strong>
-                    70-79%
-                </div>
-                <div class="grade-scheme-item">
-                    <strong>C</strong>
-                    51-69%
-                </div>
-                <div class="grade-scheme-item">
-                    <strong>F</strong>
-                    1-50%
-                </div>
-                <div class="grade-scheme-item">
-                    <strong>IC</strong>
-                    No final grade
-                </div>
+                {% for grade_range in grade_scheme %}
+                    <div class="grade-scheme-item">
+                        <strong>{{ grade_range.letter }}</strong>
+                        {{ grade_range.display_range }}
+                    </div>
+                {% endfor %}
             </div>
             <p>
-                Select the section you want to transfer, then click Validate. Review
-                the classlist final grades in the table and check any warnings. Once
-                the grades are confirmed, click Transfer Grades to send them to
-                Destiny One.
+                Manual adjustments or status changes, such as Incomplete, must be
+                performed in Modern Campus. Please communicate any concerns to PCS
+                staff.
+            </p>
+            <p>
+                Grades of A, B, or C are considered passing if the course is
+                Pass/Fail.
+            </p>
+            <p>
+                Select the Course Section to be transferred and then click Validate.
+                Review the list of students, their grades, and check for any
+                warnings. Click Transfer Grades to submit for final approval.
             </p>
         </div>
 
         {% if error_message %}
-            <div class="error">{{ error_message }}</div>
+            <div class="error">
+                {{ error_message }}
+                {% if "ce@brocku.ca" not in error_message %}
+                    <br>Contact ce@brocku.ca for assistance.
+                {% endif %}
+            </div>
         {% endif %}
 
         {% if message %}
@@ -282,7 +280,12 @@
         {% endif %}
 
         {% if warning %}
-            <div class="warning">{{ warning }}</div>
+            <div class="warning">
+                {{ warning }}
+                {% if "ce@brocku.ca" not in warning %}
+                    <br>Contact ce@brocku.ca for assistance.
+                {% endif %}
+            </div>
         {% endif %}
 
         {% if validation_rows and mode == "transfer" and not transfer_result %}
@@ -290,21 +293,21 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Display Name</th>
-                            <th>Calculated Final Grade</th>
-                            <th>Calculated Percentage</th>
                             <th>Status</th>
+                            <th>Student Name</th>
+                            <th>Calculated Percentage (Brightspace)</th>
+                            <th>Final Letter Grade (to be sent for approval)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in validation_rows %}
                             <tr>
-                                <td>{{ row.student_display_name }}</td>
-                                <td>{{ row.letter_grade }}</td>
-                                <td>{{ row.percentage_grade }}</td>
                                 <td class="{% if row.error %}row-error{% endif %}">
                                     {% if row.error %}{{ row.error }}{% else %}Ready{% endif %}
                                 </td>
+                                <td>{{ row.student_display_name }}</td>
+                                <td>{{ row.percentage_grade }}</td>
+                                <td>{{ row.letter_grade }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

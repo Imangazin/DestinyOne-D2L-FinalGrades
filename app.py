@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from dotenv import load_dotenv
@@ -57,6 +58,37 @@ cache = Cache(app)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 tool_conf = ToolConfJsonFile(os.path.join(BASE_DIR, "tool_config.json"))
 WORKFLOW_CACHE_PREFIX = "final-grades-workflow:"
+GRADE_SCHEME_FILE = os.path.join(BASE_DIR, "grade_scheme.json")
+
+
+def format_grade_range(value):
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def load_grade_scheme():
+    with open(GRADE_SCHEME_FILE) as grade_scheme_file:
+        grade_scheme = json.load(grade_scheme_file)
+
+    grades = grade_scheme.get("grades", [])
+    for grade in grades:
+        grade["min"] = float(grade["min"])
+        grade["max"] = float(grade["max"])
+        grade["display_range"] = "{0}-{1}%".format(
+            format_grade_range(grade["min"]),
+            format_grade_range(grade["max"]),
+        )
+
+    return grades
+
+
+GRADE_SCHEME = load_grade_scheme()
+
+
+@app.context_processor
+def inject_grade_scheme():
+    return {"grade_scheme": GRADE_SCHEME}
 
 
 def get_launch_data_storage():
@@ -100,6 +132,7 @@ def render_workflow_template(workflow, **kwargs):
         "error_message": None,
         "transfer_result": None,
         "validation_rows": workflow.get("validation_rows", []),
+        "grade_scheme": GRADE_SCHEME,
         "validate_url": app_url_prefix + "/validate/",
         "transfer_url": app_url_prefix + "/transfer/",
     }
@@ -120,7 +153,8 @@ def grade_has_displayed_grade(grade):
         return False
 
     try:
-        return float(numerator) != 0
+        float(numerator)
+        return True
     except (TypeError, ValueError):
         return False
 
@@ -169,21 +203,13 @@ def calculate_destiny_grade_result(grade):
 
     percent = (numerator / denominator) * 100
 
-    if numerator == 0:
-        return {
-            "letter_grade": "IC",
-            "percentage_grade": percent,
-        }
+    letter_grade = None
+    for grade_range in GRADE_SCHEME:
+        if grade_range["min"] <= percent <= grade_range["max"]:
+            letter_grade = grade_range["letter"]
+            break
 
-    if 80 <= percent <= 100:
-        letter_grade = "A"
-    elif 70 <= percent < 80:
-        letter_grade = "B"
-    elif 51 <= percent < 70:
-        letter_grade = "C"
-    elif 1 <= percent < 51:
-        letter_grade = "F"
-    else:
+    if letter_grade is None:
         raise ValueError("Calculated grade percent is outside Destiny grade ranges.")
 
     return {
@@ -324,7 +350,7 @@ def launch():
                 mode="validate",
                 message=None,
                 warning=None,
-                error_message="Error occured. Contact CPI for assistance.",
+                error_message="Error occurred.",
                 transfer_result=None,
             ), 400
 
@@ -345,8 +371,7 @@ def launch():
                 message=None,
                 warning=None,
                 error_message=(
-                    "Current course has multiple parent templates. "
-                    "Please contact CPI for assisstance."
+                    "Current course has multiple parent templates."
                 ),
                 transfer_result=None,
             )
@@ -381,7 +406,7 @@ def launch():
             mode="validate",
             message=None,
             warning=None,
-            error_message="Error occured. Contact CPI for assistance.",
+            error_message="Error occurred.",
             transfer_result=None,
         ), 400
 
@@ -400,7 +425,7 @@ def validate_grades():
             mode="validate",
             message=None,
             warning=None,
-            error_message="Error occured. Contact CPI for assistance.",
+            error_message="Error occurred.",
             transfer_result=None,
         ), 400
 
@@ -433,7 +458,7 @@ def validate_grades():
         save_workflow(workflow["workflow_id"], workflow)
         return render_workflow_template(
             workflow,
-            error_message="Error occured. Contact CPI for assistance.",
+            error_message="Error occurred.",
         )
 
     workflow["grade_values"] = grade_values
@@ -470,7 +495,7 @@ def transfer_grades():
             mode="validate",
             message=None,
             warning=None,
-            error_message="Error occured. Contact CPI for assistance.",
+            error_message="Error occurred.",
             transfer_result=None,
         ), 400
 
@@ -609,7 +634,7 @@ def transfer_grades():
         return render_workflow_template(
             workflow,
             mode="transfer",
-            error_message="Error occured. Contact CPI for assistance.",
+            error_message="Error occurred.",
         )
 
 
