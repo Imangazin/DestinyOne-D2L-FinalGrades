@@ -256,6 +256,7 @@ def create_or_update_student_final_grade(
                         "objectId": str(course_section_profile_object_id),
                     }
                 },
+                "isInstructorApproved": "true",
                 "student": {
                     "loginId": student_login_id,
                 },
