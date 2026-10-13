@@ -28,11 +28,20 @@ from destinyone import (
 
 load_dotenv()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 APP_FOLDER = os.getenv("APP_FOLDER")
 APP_URL_PREFIX = os.getenv("APP_URL_PREFIX") or (f"/{APP_FOLDER}" if APP_FOLDER else "")
-CACHE_DIR = os.getenv("FLASK_CACHE_DIR") or f"/tmp/{APP_FOLDER}-flask-cache"
-os.makedirs(CACHE_DIR, exist_ok=True)
+CACHE_DIR = os.getenv("FLASK_CACHE_DIR") or os.path.join(BASE_DIR, "flask-cache")
+
+try:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+except OSError as exc:
+    raise RuntimeError(
+        "Unable to create Flask cache directory {cache_dir}. Create it with "
+        "ownership for the service user, or set FLASK_CACHE_DIR to a writable "
+        "persistent directory.".format(cache_dir=CACHE_DIR)
+    ) from exc
 
 
 app = Flask(__name__)
@@ -55,7 +64,6 @@ app.config.from_mapping(
 
 cache = Cache(app)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 tool_conf = ToolConfJsonFile(os.path.join(BASE_DIR, "tool_config.json"))
 WORKFLOW_CACHE_PREFIX = "final-grades-workflow:"
 GRADE_SCHEME_FILE = os.path.join(BASE_DIR, "grade_scheme.json")
