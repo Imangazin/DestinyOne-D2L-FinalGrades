@@ -494,7 +494,7 @@ def validate_grades():
     warning = None
     if any(not grade_has_displayed_grade(grade) for grade in grade_values):
         warning = (
-            "There is at least one student has no grade. "
+            "There is at least one student who has no grade. "
             "Would you like to continue?"
         )
 
